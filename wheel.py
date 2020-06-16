@@ -78,6 +78,12 @@ class Main(tk.Frame):
 
         self.verbose = verbose
 
+        self.var_sess_dur = tk.IntVar()
+        self.var_track_per = tk.IntVar()
+        self.var_sess_dur.set(60000)
+        self.var_track_per.set(50)
+        self.parameters = {'session_dur': self.var_sess_dur, 'track_period': self.var_track_per}
+
         self.var_port = tk.StringVar()
         self.var_print_arduino = tk.BooleanVar()
         self.var_stop = tk.BooleanVar()
@@ -117,12 +123,6 @@ class Main(tk.Frame):
         # Arduino frame
         frame_arduino = ttk.LabelFrame(frame_setup_col1, text='Arduino')
         frame_arduino.grid(row=0, column=0, padx=px, pady=py, sticky='we')
-        # frame_arduino1 = tk.Frame(frame_arduino)
-        # frame_arduino2 = tk.Frame(frame_arduino)
-        # frame_arduino1.grid(row=0, column=0, sticky='we', padx=px, pady=py)
-        # frame_arduino2.grid(row=1, column=0, sticky='we', padx=px, pady=py)
-        # frame_arduino2.grid_columnconfigure(0, weight=1)
-        # frame_arduino.grid_columnconfigure(0, weight=1)
 
         # Notes frame
         frame_notes = tk.Frame(frame_setup_col2)
@@ -146,8 +146,6 @@ class Main(tk.Frame):
         frame_live = tk.Frame(frame_monitor)
         frame_counter.grid(row=0, column=0, padx=px, pady=py, sticky='we')
         frame_live.grid(row=1, column=0, padx=px, pady=py, sticky='wens')
-        # frame_live.rowconfigure(0, weight=1)
-        # frame_live.columnconfigure(1, weight=1)
 
         # Add GUI components
 
@@ -155,26 +153,21 @@ class Main(tk.Frame):
 
         ### frame_session
         ## UI for trial control
-        self.entry_session_dur = ttk.Entry(frame_session, width=entry_width)
+        self.entry_session_dur = ttk.Entry(frame_session, textvariable=self.var_sess_dur, width=entry_width)
         tk.Label(frame_session, text='Session duration (ms): ', anchor='e').grid(row=0, column=0, sticky='e')
         self.entry_session_dur.grid(row=0, column=1, sticky='w')
 
         ### frame_misc
         ### UI for miscellaneous parameters
-        self.entry_track_period = ttk.Entry(frame_misc, width=entry_width)
+        self.entry_track_period = ttk.Entry(frame_misc, textvariable=self.var_track_per, width=entry_width)
         tk.Label(frame_misc, text='Track period (ms): ', anchor='e').grid(row=2, column=0, sticky='e')
         self.entry_track_period.grid(row=2, column=1, sticky='w')
 
         ### frame_arduino
         ### UI for Arduino
-        self.arduino = arduino.Arduino(frame_arduino, main_window=self.parent, verbose=self.verbose)
+        self.arduino = arduino.Arduino(frame_arduino, main_window=self.parent, verbose=self.verbose, params=self.parameters)
         print(type(self.arduino))
         self.arduino.grid(row=0, column=0, sticky='we')
-        # self.entry_serial_state = ttk.Entry(frame_arduino1, textvariable=self.var_port)
-        # self.button_arduino = ttk.Button(frame_arduino2, text='Set up', command=self.arduino_setup)
-        # tk.Label(frame_arduino1, text='State: ').grid(row=0, column=0, sticky='e')
-        # self.entry_serial_state.grid(row=0, column=1, sticky='we', padx=5)
-        # self.button_arduino.grid(row=0, column=0, pady=py, sticky='we')
 
         ## Notes
         self.entry_subject = ttk.Entry(frame_notes)
@@ -236,14 +229,9 @@ class Main(tk.Frame):
         ]
 
         # Default values
-        self.entry_session_dur.insert(0, 60000)
-        self.entry_track_period.insert(0, 50)
-        self.button_start['state'] = 'disabled'
         self.button_stop['state'] = 'disabled'
 
         ###### SESSION VARIABLES ######
-        self.parameters = {}
-        self.ser = serial.Serial(timeout=1, baudrate=9600)
         self.q_serial = Queue()
 
         # self.update_serial()
@@ -269,20 +257,7 @@ class Main(tk.Frame):
         Enable and disable components based on events to prevent bad stuff.
         '''
 
-        if option == 'uploaded':
-            # Enable start objects
-            for obj in self.obj_to_enable_at_open:
-                obj['state'] = 'normal'
-            for obj in self.obj_to_disable_at_open:
-                obj['state'] = 'disabled'
-
-        elif option == 'reset':
-            for obj in self.obj_to_disable_at_open:
-                obj['state'] = 'normal'
-            for obj in self.obj_to_enable_at_open:
-                obj['state'] = 'disabled'
-
-        elif option == 'start':
+        if option == 'start':
             for obj in self.obj_to_disable_at_start:
                 obj['state'] = 'disabled'
             for obj in self.obj_to_enable_at_start:
@@ -293,34 +268,6 @@ class Main(tk.Frame):
                 obj['state'] = 'normal'
             for obj in self.obj_to_enable_at_start:
                 obj['state'] = 'disabled'
-
-    def update_serial(self):
-        self.entry_serial_state['state'] = 'normal'
-        self.entry_serial_state.delete(0, 'end')
-        if self.ser.isOpen():
-            self.entry_serial_state.insert(0, 'Uploaded to {}'.format(self.ser.port))
-            self.gui_util('uploaded')
-        else:
-            self.entry_serial_state.insert(0, 'Waiting for parameters')
-            self.gui_util('reset')
-        self.entry_serial_state['state'] = 'readonly'
-
-    def close_serial(self):
-        self.ser.close()
-        self.update_serial()
-
-    def arduino_setup(self):
-        # *** Gather parameters to send ***
-        self.parameters = {
-            'session_dur': int(self.entry_session_dur.get()),
-            'track_period': int(self.entry_track_period.get()),
-        }
-
-        # Create new window
-        self.nw = tk.Toplevel(self.parent)
-        self.nw.bind('<Destroy>', lambda x: self.update_serial())  # "Throw away" '<Destroy' input on callback
-        self.nw.grab_set()
-        arduino.Arduino(self.nw, self)
     
     def start(self, code_start='E'):
         self.gui_util('start')
@@ -333,7 +280,6 @@ class Main(tk.Frame):
             except IOError:
                 tkMessageBox.showerror('File error', 'Could not create file to save data.')
                 self.gui_util('stop')
-                self.gui_util('uploaded')
                 return
         else:
             # Default file name
@@ -360,8 +306,7 @@ class Main(tk.Frame):
         self.grp_exp['weight'] = int(self.entry_weight.get()) if self.entry_weight.get() else 0
 
         # *** Create file structure ***
-        session_length = self.parameters['session_dur']
-        nstepframes = 2 * session_length / float(self.entry_track_period.get())
+        nstepframes = 2 * self.var_sess_dur.get() / self.var_track_per.get()
         chunk_size = (2, 1)
 
         self.grp_behav = self.grp_exp.create_group('behavior')
@@ -377,7 +322,7 @@ class Main(tk.Frame):
 
         # Store session parameters into behavior group
         for key, value in self.parameters.items():
-            self.grp_behav.attrs[key] = value
+            self.grp_behav.attrs[key] = value.get()
 
         # Create thread to scan serial
         suppress = [
@@ -385,13 +330,13 @@ class Main(tk.Frame):
         ]
         thread_scan = threading.Thread(
             target=scan_serial,
-            args=(self.q_serial, self.ser, self.var_print_arduino.get(), suppress, code_end)
+            args=(self.q_serial, self.arduino.ser, self.var_print_arduino.get(), suppress, code_end)
         )
         thread_scan.daemon = True    # Don't remember why this is here
 
         # Start session
-        self.ser.flushInput()                                   # Remove data from serial input
-        self.ser.write(code_start.encode())
+        self.arduino.ser.flushInput()                                   # Remove data from serial input
+        self.arduino.ser.write(code_start.encode())
         thread_scan.start()
         self.start_time = datetime.now()
         print('Session start {}'.format(self.start_time))
@@ -411,7 +356,7 @@ class Main(tk.Frame):
         # End on 'Stop' button (by user)
         if self.var_stop.get():
             self.var_stop.set(False)
-            self.ser.write('0'.encode())
+            self.arduino.ser.write('0'.encode())
             print('User triggered stop, sending signal to Arduino...')
 
         # Watch incoming queue
@@ -446,7 +391,7 @@ class Main(tk.Frame):
         end_time = datetime.now().strftime('%H:%M:%S')
         print('Session ended at ' + end_time)
         self.gui_util('stop')
-        self.close_serial()
+        self.arduino.close_serial()
 
         # Finalize data
         print('Finalizing behavioral data')
