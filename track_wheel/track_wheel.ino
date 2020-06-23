@@ -173,13 +173,20 @@ void loop() {
 
   // -- 2. TRACK MOVEMENT -- //
   if (ts >= ts_next_track) {
-     if (track_change != 0) {
-       Serial.print(code_move);
-       Serial.print(DELIM);
-       Serial.print(ts);
-       Serial.print(DELIM);
-       Serial.println(track_change);
-     }
+    // if (track_change != 0) {
+    //   Serial.print(code_move);
+    //   Serial.print(DELIM);
+    //   Serial.print(ts);
+    //   Serial.print(DELIM);
+    //   Serial.println(track_change);
+    // }
+    if (random(10) == 0) {
+      Serial.print(code_move);
+      Serial.print(DELIM);
+      Serial.print(ts);
+      Serial.print(DELIM);
+      Serial.println(random(1, 25));
+    }
     track_change = 0;
     
     // Increment ts_next_track for next track stamp

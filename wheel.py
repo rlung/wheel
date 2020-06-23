@@ -168,6 +168,7 @@ class Main(tk.Frame):
         self.arduino = arduino.Arduino(frame_arduino, main_window=self.parent, verbose=self.verbose, params=self.parameters)
         print(type(self.arduino))
         self.arduino.grid(row=0, column=0, sticky='we')
+        self.arduino.var_uploaded.trace_add('write', self.gui_util)
 
         ## Notes
         self.entry_subject = ttk.Entry(frame_notes)
@@ -209,6 +210,10 @@ class Main(tk.Frame):
         
         ###### GUI OBJECTS ORGANIZED BY TIME ACTIVE ######
         # List of components to disable at open
+        self.obj_to_disable_on_upload = [
+            child for child in
+            (frame_session.winfo_children() + frame_misc.winfo_children())
+        ]
         self.obj_to_disable_at_open = [
             self.entry_session_dur,
             self.entry_track_period,
@@ -252,7 +257,7 @@ class Main(tk.Frame):
         self.entry_save_file.delete(0, 'end')
         self.entry_save_file.insert(0, save_file)
 
-    def gui_util(self, option):
+    def gui_util(self, option, indx=None, mode=None):
         ''' Updates GUI components
         Enable and disable components based on events to prevent bad stuff.
         '''
@@ -268,6 +273,11 @@ class Main(tk.Frame):
                 obj['state'] = 'normal'
             for obj in self.obj_to_enable_at_start:
                 obj['state'] = 'disabled'
+
+        elif option == 'uploaded':
+            new_state = 'disable' if self.parent.getvar('uploaded') else 'normal'
+            for obj in self.obj_to_disable_on_upload:
+                obj['state'] = new_state
     
     def start(self, code_start='E'):
         self.gui_util('start')

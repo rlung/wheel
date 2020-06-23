@@ -2,16 +2,15 @@
 
 ## To-do
 
-- Uploading parameters to arduino through Arduino class (done?)
-- Disable parameters on upload
+- Toggle print_arduino somehow
 - Make start/stop one button
 - What happens when connecting to wrong serial port?
 - Test stability of monitor with longgggg recording
 
 ## Wish list
 
+- File menu
 - Add start and end time
-- Move arduino setup to main window. Rename to Upload and Reset
 - Trigger stop on SpinView
 
 ## Notes
