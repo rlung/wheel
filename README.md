@@ -1,4 +1,5 @@
 # Wheel
+This project is still under extensive development. However, feel free to explore. Read the [wiki](https://github.com/rlung/wheel/wiki) for more information on setup.
 
 ## To-do
 
@@ -9,12 +10,7 @@
 
 ## Wish list
 
+- Add slack integration
 - File menu
 - Add start and end time
 - Trigger stop on SpinView
-
-## Notes
-
-
-## Firefly S IO control
-http://softwareservices.flir.com/FFY-U3-16S2M/latest/Model/public/DigitalIOControl.html
