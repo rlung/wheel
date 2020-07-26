@@ -79,10 +79,16 @@ class Main(tk.Frame):
         self.verbose = verbose
 
         self.var_sess_dur = tk.IntVar()
+        self.var_rec_all = tk.IntVar()
         self.var_track_per = tk.IntVar()
         self.var_sess_dur.set(60000)
+        self.var_rec_all.set(0)
         self.var_track_per.set(50)
-        self.parameters = {'session_dur': self.var_sess_dur, 'track_period': self.var_track_per}
+        self.parameters = {
+            'session_dur': self.var_sess_dur,
+            'record_all': self.var_rec_all,
+            'track_period': self.var_track_per,
+        }
 
         self.var_port = tk.StringVar()
         self.var_print_arduino = tk.BooleanVar()
@@ -160,8 +166,11 @@ class Main(tk.Frame):
         ### frame_misc
         ### UI for miscellaneous parameters
         self.entry_track_period = ttk.Entry(frame_misc, textvariable=self.var_track_per, width=entry_width)
-        tk.Label(frame_misc, text='Track period (ms): ', anchor='e').grid(row=2, column=0, sticky='e')
-        self.entry_track_period.grid(row=2, column=1, sticky='w')
+        self.entry_rec_all = ttk.Checkbutton(frame_misc, variable=self.var_rec_all)
+        tk.Label(frame_misc, text='Track period (ms): ', anchor='e').grid(row=0, column=0, sticky='e')
+        tk.Label(frame_misc, text='Record all data: ', anchor='e').grid(row=1, column=0, sticky='e')
+        self.entry_track_period.grid(row=0, column=1, sticky='w')
+        self.entry_rec_all.grid(row=1, column=1, sticky='w')
 
         ### frame_arduino
         ### UI for Arduino
@@ -322,8 +331,9 @@ class Main(tk.Frame):
         self.grp_behav = self.grp_exp.create_group('behavior')
         self.grp_behav.create_dataset(name='wheel', dtype='int32', shape=(2, int(nstepframes) * 1.1), chunks=chunk_size)
 
-        # Reset counters
+        # Reset counters and clear data
         for counter in self.counter.values(): counter.set(0)
+        self.live_view.clear_data()
 
         # Clear Queues
         for q in [self.q_serial]:

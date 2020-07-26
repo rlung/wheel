@@ -9,7 +9,7 @@ Data from hardware is routed directly back via serial connection to Python
 GUI as "triplet" for recording and calculations.
 
 Example input:
-D10000,50,271828
+D10000,1,50,271828
 
 */
 
@@ -33,6 +33,7 @@ const int code_move = 7;
 // Variables via serial
 // unsigned long sessionDur;
 unsigned long session_dur;
+bool rec_all;
 unsigned long track_period;
 
 // Other variables
@@ -62,7 +63,7 @@ void EndSession(unsigned long ts) {
 
 // Retrieve parameters from serial
 int GetParams() {
-  const int param_num = 3;
+  const int param_num = 4;
   unsigned long parameters[param_num];
   unsigned long last_num;
 
@@ -71,8 +72,9 @@ int GetParams() {
   }
 
   session_dur = parameters[0];
-  track_period = parameters[1];
-  last_num = parameters[2];
+  rec_all = parameters[1];
+  track_period = parameters[2];
+  last_num = parameters[3];
   
   if (last_num != CODEPARAMSEND) return 1;
   else return 0;
@@ -173,14 +175,14 @@ void loop() {
 
   // -- 2. TRACK MOVEMENT -- //
   if (ts >= ts_next_track) {
-    // if (track_change != 0) {
+    // if (rec_all || track_change != 0) {
     //   Serial.print(code_move);
     //   Serial.print(DELIM);
     //   Serial.print(ts);
     //   Serial.print(DELIM);
     //   Serial.println(track_change);
     // }
-    if (random(10) == 0) {
+    if (rec_all || random(10) == 0) {
       Serial.print(code_move);
       Serial.print(DELIM);
       Serial.print(ts);
