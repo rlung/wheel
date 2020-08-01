@@ -9,7 +9,7 @@ Data from hardware is routed directly back via serial connection to Python
 GUI as "triplet" for recording and calculations.
 
 Example input:
-D10000,1,50,271828
+D1,1,0,50,271828
 
 */
 
@@ -33,7 +33,8 @@ const int code_move = 7;
 // Variables via serial
 // unsigned long sessionDur;
 unsigned long session_dur;
-bool rec_all;
+bool rec_zeros;
+bool emulate_wheel;
 unsigned long track_period;
 
 // Other variables
@@ -63,7 +64,7 @@ void EndSession(unsigned long ts) {
 
 // Retrieve parameters from serial
 int GetParams() {
-  const int param_num = 4;
+  const int param_num = 5;
   unsigned long parameters[param_num];
   unsigned long last_num;
 
@@ -71,10 +72,11 @@ int GetParams() {
     parameters[p] = Serial.parseInt();
   }
 
-  session_dur = parameters[0];
-  rec_all = parameters[1];
-  track_period = parameters[2];
-  last_num = parameters[3];
+  emulate_wheel = parameters[0];
+  session_dur = parameters[1] * 1000 * 60;
+  rec_zeros = parameters[2];
+  track_period = parameters[3];
+  last_num = parameters[4];
   
   if (last_num != CODEPARAMSEND) return 1;
   else return 0;
@@ -135,6 +137,13 @@ void setup() {
   Serial.println(0);
   Serial.println("Paremeters processed");
 
+  if (emulate_wheel) {
+    Serial.println("Emulating wheel");
+  }
+  else {
+    Serial.println("no emulation");
+  }
+
   // Wait for start signal
   Serial.println("Waiting for start signal ('E')");
   LookForSignal(2, 0);
@@ -175,19 +184,23 @@ void loop() {
 
   // -- 2. TRACK MOVEMENT -- //
   if (ts >= ts_next_track) {
-    // if (rec_all || track_change != 0) {
-    //   Serial.print(code_move);
-    //   Serial.print(DELIM);
-    //   Serial.print(ts);
-    //   Serial.print(DELIM);
-    //   Serial.println(track_change);
-    // }
-    if (rec_all || random(10) == 0) {
-      Serial.print(code_move);
-      Serial.print(DELIM);
-      Serial.print(ts);
-      Serial.print(DELIM);
-      Serial.println(random(1, 25));
+    if (emulate_wheel){
+      if (rec_zeros || random(10) == 0) {
+        Serial.print(code_move);
+        Serial.print(DELIM);
+        Serial.print(ts);
+        Serial.print(DELIM);
+        Serial.println(random(1, 25));
+      } 
+    }
+    else {
+      if (rec_zeros || track_change != 0) {
+          Serial.print(code_move);
+          Serial.print(DELIM);
+          Serial.print(ts);
+          Serial.print(DELIM);
+          Serial.println(track_change);
+      }
     }
     track_change = 0;
     

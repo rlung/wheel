@@ -71,22 +71,24 @@ source_path = os.path.dirname(sys.argv[0])
 
 class Main(tk.Frame):
 
-    def __init__(self, parent, verbose=False):
+    def __init__(self, parent, verbose=False, emulate_wheel=False):
         self.parent = parent
         parent.columnconfigure(0, weight=1)
         # parent.rowconfigure(1, weight=1)
 
         self.verbose = verbose
-
         self.var_sess_dur = tk.IntVar()
-        self.var_rec_all = tk.IntVar()
+        self.var_rec_zeros = tk.IntVar()
+        self.var_emulate_wheel = tk.IntVar()
         self.var_track_per = tk.IntVar()
-        self.var_sess_dur.set(60000)
-        self.var_rec_all.set(0)
+        self.var_sess_dur.set(1)
+        self.var_rec_zeros.set(1)
+        self.var_emulate_wheel.set(emulate_wheel)
         self.var_track_per.set(50)
         self.parameters = {
+            'emulate_wheel': self.var_emulate_wheel,
             'session_dur': self.var_sess_dur,
-            'record_all': self.var_rec_all,
+            'record_zeros': self.var_rec_zeros,
             'track_period': self.var_track_per,
         }
 
@@ -160,17 +162,17 @@ class Main(tk.Frame):
         ### frame_session
         ## UI for trial control
         self.entry_session_dur = ttk.Entry(frame_session, textvariable=self.var_sess_dur, width=entry_width)
-        tk.Label(frame_session, text='Session duration (ms): ', anchor='e').grid(row=0, column=0, sticky='e')
+        tk.Label(frame_session, text='Session duration (min): ', anchor='e').grid(row=0, column=0, sticky='e')
         self.entry_session_dur.grid(row=0, column=1, sticky='w')
 
         ### frame_misc
         ### UI for miscellaneous parameters
+        self.entry_rec_all = ttk.Checkbutton(frame_misc, variable=self.var_rec_zeros)
         self.entry_track_period = ttk.Entry(frame_misc, textvariable=self.var_track_per, width=entry_width)
-        self.entry_rec_all = ttk.Checkbutton(frame_misc, variable=self.var_rec_all)
-        tk.Label(frame_misc, text='Track period (ms): ', anchor='e').grid(row=0, column=0, sticky='e')
-        tk.Label(frame_misc, text='Record all data: ', anchor='e').grid(row=1, column=0, sticky='e')
-        self.entry_track_period.grid(row=0, column=1, sticky='w')
-        self.entry_rec_all.grid(row=1, column=1, sticky='w')
+        tk.Label(frame_misc, text='Record zeros: ', anchor='e').grid(row=0, column=0, sticky='e')
+        tk.Label(frame_misc, text='Track period (ms): ', anchor='e').grid(row=1, column=0, sticky='e')
+        self.entry_rec_all.grid(row=0, column=1, sticky='w')
+        self.entry_track_period.grid(row=1, column=1, sticky='w')
 
         ### frame_arduino
         ### UI for Arduino
@@ -223,6 +225,7 @@ class Main(tk.Frame):
             child for child in
             (frame_session.winfo_children() + frame_misc.winfo_children())
         ]
+        self.obj_to_enable_on_upload = [self.button_start]
         self.obj_to_disable_at_open = [
             self.entry_session_dur,
             self.entry_track_period,
@@ -243,6 +246,7 @@ class Main(tk.Frame):
         ]
 
         # Default values
+        self.button_start['state'] = 'disabled'
         self.button_stop['state'] = 'disabled'
 
         ###### SESSION VARIABLES ######
@@ -287,6 +291,8 @@ class Main(tk.Frame):
             new_state = 'disable' if self.parent.getvar('uploaded') else 'normal'
             for obj in self.obj_to_disable_on_upload:
                 obj['state'] = new_state
+            for obj in self.obj_to_enable_on_upload:
+                obj['state'] = 'disable' if new_state == 'normal' else 'normal'
     
     def start(self, code_start='E'):
         self.gui_util('start')
@@ -325,7 +331,7 @@ class Main(tk.Frame):
         self.grp_exp['weight'] = int(self.entry_weight.get()) if self.entry_weight.get() else 0
 
         # *** Create file structure ***
-        nstepframes = 2 * self.var_sess_dur.get() / self.var_track_per.get()
+        nstepframes = 2 * 60000 * self.var_sess_dur.get() / self.var_track_per.get()
         chunk_size = (2, 1)
 
         self.grp_behav = self.grp_exp.create_group('behavior')
@@ -461,12 +467,13 @@ def scan_serial(q_serial, ser, print_arduino=False, suppress=[], code_end=0):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose', action='store_true')
+    parser.add_argument('--emulate-wheel', action='store_true')
     args = parser.parse_args()
 
     # GUI
     root = tk.Tk()
     root.wm_title('Wheel')
-    Main(root, verbose=args.verbose)
+    Main(root, verbose=args.verbose, emulate_wheel=args.emulate_wheel)
     root.grid()
     root.mainloop()
 
