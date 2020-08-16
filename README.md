@@ -8,6 +8,19 @@ This project is still under extensive development. However, feel free to explore
 - Disable "start" until uploaded
 - What happens when connecting to wrong serial port?
 - Test stability of monitor with longgggg recording
+- graph only last XX time
+- camera check (text only maybe?)
+- txt instead of hdf5
+
+- Imaging toggle
+- Opto toggle
+
+### Opto
+Should have these features
+
+- enable/disable
+- freq
+- bouts
 
 ## Wish list
 
@@ -15,3 +28,4 @@ This project is still under extensive development. However, feel free to explore
 - File menu
 - Add start and end time
 - Trigger stop on SpinView
+- emulate wheel better
