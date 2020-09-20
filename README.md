@@ -5,12 +5,9 @@ This project is still under extensive development. However, feel free to explore
 
 - Toggle print_arduino somehow
 - Make start/stop one button
-- Disable "start" until uploaded
-- What happens when connecting to wrong serial port?
 - Test stability of monitor with longgggg recording
 - graph only last XX time
 - camera check (text only maybe?)
-- txt instead of hdf5
 
 - Imaging toggle
 - Opto toggle

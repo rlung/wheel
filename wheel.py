@@ -34,6 +34,7 @@ import time
 from datetime import datetime
 import os
 import h5py
+import numpy as np
 import matplotlib
 from matplotlib.figure import Figure
 import arduino
@@ -90,7 +91,7 @@ class Main(tk.Frame):
         self.var_rec_zeros.set(1)
         self.var_emulate_wheel.set(emulate_wheel)
         self.var_track_per.set(50)
-        self.var_save_txt.set(False)
+        self.var_save_txt.set(True)
 
         self.parameters = {
             'emulate_wheel': self.var_emulate_wheel,
@@ -271,7 +272,7 @@ class Main(tk.Frame):
             defaultextension='.h5',
             filetypes=[
                 ('HDF5 file', '*.h5 *.hdf5'),
-                ('All files', '*.*')
+                ('CSV file', '*.csv')
             ]
         )
         self.entry_save_file.delete(0, 'end')
@@ -310,12 +311,31 @@ class Main(tk.Frame):
             if not os.path.exists('data'):
                 os.makedirs('data')
             now = datetime.now()
-            filename = 'data/data-' + now.strftime('%y%m%d-%H%M%S') + '.h5'
+
+            if self.var_save_txt.get():
+                ext = '.csv'
+            else:
+                ext = '.h5'
+            filename = 'data/data-' + now.strftime('%y%m%d-%H%M%S') + ext
+            state = self.entry_save_file['state']
+            self.entry_save_file['state'] = 'normal'
+            self.entry_save_file.delete(0, 'end')
+            self.entry_save_file.insert(0, filename)
+            self.entry_save_file['state'] = state
+        else:
+            if os.path.splitext(self.entry_save_file.get())[1] in ['.h5', '.hdf5']:
+                self.var_save_txt.set(False)
+
+        # Filename for HDF5 file
+        if self.var_save_txt.get():
+            self.hdf5_filename = os.path.splitext(self.entry_save_file.get())[0] + '.h5'
+        else:
+            self.hdf5_filename = self.entry_save_file.get()
 
         # Try to open/create file
         try:
             # Create file if it doesn't already exist, append otherwise ('a' parameter)
-            with h5py.File(self.entry_save_file.get(), 'a') as _:
+            with h5py.File(self.hdf5_filename, 'a') as _:
                 pass
         except IOError:
             tkMessageBox.showerror('File error', 'Could not create file to save data.')
@@ -323,7 +343,6 @@ class Main(tk.Frame):
             return
 
         # Prepare HDF5 file
-        self.hdf5_filename = self.entry_save_file.get()
         with h5py.File(self.hdf5_filename, 'a') as hdf5_file:
             # Create group for experiment
             # Append to existing file (if applicable). If group already exists, append number to name.
@@ -345,21 +364,18 @@ class Main(tk.Frame):
             # *** Create file structure ***
             self.cache_size = self.var_cache_size.get()
             nstepframes = 2 * 60000 * self.var_sess_dur.get() / self.var_track_per.get()
-            chunk_size = (2, self.cache_size)
+            chunk_size = (self.cache_size, 2)
 
             hdf5_grp_behav = hdf5_grp_exp.create_group('behavior')
-            hdf5_grp_behav.create_dataset(name='wheel', dtype='int32', shape=(2, int(nstepframes) * 1.1), chunks=chunk_size)
+            hdf5_grp_behav.create_dataset(name='wheel', dtype='int32', shape=(int(nstepframes) * 1.1, 2), chunks=chunk_size)
             
             # Store session parameters into behavior group
             for key, value in self.parameters.items():
                 hdf5_grp_behav.attrs[key] = value.get()
 
-            # Store start time
-            hdf5_grp_behav.attrs['start_time'] = self.start_time.strftime('%H:%M:%S')
-
         # Create cache
         self.cache = {
-            'wheel': np.zeros((2, self.cache_size)),
+            'wheel': np.zeros((self.cache_size, 2)),
         }
 
         # Reset counters and clear data
@@ -427,15 +443,15 @@ class Main(tk.Frame):
             event_var = arduino_events[code]
             event_n = self.counter[arduino_events[code]].get()
             cache_n = event_n % self.cache_size
-            self.cache[event_var][:, cache_n]
+            self.cache[event_var][cache_n, :] = [ts, data]
             self.counter[event_var].set(event_n + 1)
 
             # Record data to HDF5 when cache fills
             if cache_n >= self.cache_size - 1:
                 with h5py.File(self.hdf5_filename, 'a') as hdf5_file:
                     cache_slice = slice(event_n - cache_n, event_n + 1)
-                    dataset = hdf5_file[f'{hdf5_grp_name}/behavior/{event_var}']
-                    dataset[event_var][:, cache_slice] = self.cache[event_var]
+                    dataset = hdf5_file[f'{self.hdf5_grp_name}/behavior/{event_var}']
+                    dataset[cache_slice, :] = self.cache[event_var]
                 self.cache[event_var][:] = 0
 
             # Update live view
@@ -461,25 +477,49 @@ class Main(tk.Frame):
         print('Finalizing behavioral data')
         with h5py.File(self.hdf5_filename, 'a') as hdf5_file:
             # Write remainder of cache
-            hdf5_grp_behav = hdf5_file[f'{hdf5_grp_name}/behavior']
+            hdf5_grp_behav = hdf5_file[f'{self.hdf5_grp_name}/behavior']
+            hdf5_grp_behav.attrs['start_time'] = self.start_time.strftime('%H:%M:%S')
             hdf5_grp_behav.attrs['end_time'] = end_time
             hdf5_grp_behav.attrs['arduino_end'] = arduino_end
             for ev in arduino_events.values():
                 event_n = self.counter[ev].get()
                 cache_n = event_n % self.cache_size
-                cache_slice = slice(event_n - cache_n, event_n + 1)
+                cache_slice = slice(event_n - cache_n, event_n)  # No `+ 1`????????
                 dataset = hdf5_grp_behav[ev]
-                dataset[event_var][:, cache_slice] = self.cache[ev]
-                dataset[ev].resize((2, event_n))
+                # pdb.set_trace()
+                dataset[cache_slice, :] = self.cache[ev][:cache_n, :]
+                dataset.resize((event_n, 2))
 
             # Write notes
-            hdf5_file[f'{hdf5_grp_name}'].attrs['notes'] = \
+            hdf5_file[self.hdf5_grp_name].attrs['notes'] = \
                 self.scrolled_notes.get(1.0, 'end')
 
-        # Create txt files
-        # needs to be done
+        # Create csv files if indicated
         if self.var_save_txt.get():
-            pass
+            filename_base = os.path.splitext(self.entry_save_file.get())[0]
+
+            with h5py.File(self.hdf5_filename, 'r') as hdf5_file:
+                hdf5_grp_behav = hdf5_file[f'{self.hdf5_grp_name}/behavior']
+                
+                # Save attributes
+                subj = self.entry_subject.get() or '?'
+                wt = hdf5_file[f"{self.hdf5_grp_name}/weight"].value
+                notes = hdf5_file[self.hdf5_grp_name].attrs['notes']
+                with open(f"{filename_base}-attributes.csv", 'w') as file:
+                    file.write(f"subject,{subj}\n")
+                    file.write(f"weight,{wt}\n")
+                    for k, v in hdf5_grp_behav.attrs.items():
+                        file.write(f"{k},{v}\n")
+                    file.write(f"notes:\n{notes}")
+
+                # Save datasets
+                for ev in arduino_events.values():
+                    np.savetxt(
+                        f"{filename_base}-{ev}.csv",
+                        hdf5_grp_behav[ev],
+                        delimiter=','
+                    )
+            os.remove(self.hdf5_filename)
 
         # Clear self.parameters
         self.parameters = {}
