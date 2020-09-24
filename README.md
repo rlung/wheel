@@ -3,6 +3,14 @@ This project is still under extensive development. However, feel free to explore
 
 ## To-do
 
+- No overwrite
+- SEconds on graph x axis
+- counter on under construction
+- remove "settings" button
+- Make thinner
+- clear save-file location and other settings
+- pupilize button
+
 - Toggle print_arduino somehow
 - Make start/stop one button
 - Test stability of monitor with longgggg recording
