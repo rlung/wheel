@@ -3,18 +3,17 @@ This project is still under extensive development. However, feel free to explore
 
 ## To-do
 
-- No overwrite
-- SEconds on graph x axis
+- Seconds on graph x axis
 - counter on under construction
 - remove "settings" button
-- Make thinner
-- clear save-file location and other settings
+x Make thinner
+x clear save-file location and other settings
 - pupilize button
 
-- Toggle print_arduino somehow
+x Toggle print_arduino somehow
 - Make start/stop one button
 - Test stability of monitor with longgggg recording
-- graph only last XX time
+? graph only last XX time
 - camera check (text only maybe?)
 
 - Imaging toggle

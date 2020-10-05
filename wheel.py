@@ -72,7 +72,7 @@ source_path = os.path.dirname(sys.argv[0])
 
 class Main(tk.Frame):
 
-    def __init__(self, parent, verbose=False, emulate_wheel=False):
+    def __init__(self, parent, verbose=False, emulate_wheel=False, print_arduino=False):
         self.parent = parent
         parent.columnconfigure(0, weight=1)
         # parent.rowconfigure(1, weight=1)
@@ -100,9 +100,11 @@ class Main(tk.Frame):
             'track_period': self.var_track_per,
         }
 
-        self.var_port = tk.StringVar()
         self.var_print_arduino = tk.BooleanVar()
         self.var_stop = tk.BooleanVar()
+
+        self.var_print_arduino.set(print_arduino)
+        self.var_stop.set(False)
 
         # Counters
         # IMPORTANT: need to keep `counter_vars` in same order as `arduino_events`
@@ -116,10 +118,10 @@ class Main(tk.Frame):
         frame_setup.grid(row=0, column=0)
         frame_setup_col0 = tk.Frame(frame_setup)
         frame_setup_col1 = tk.Frame(frame_setup)
-        frame_setup_col2 = tk.Frame(frame_setup)
+        # frame_setup_col2 = tk.Frame(frame_setup)
         frame_setup_col0.grid(row=0, column=0, sticky='we')
         frame_setup_col1.grid(row=0, column=1, sticky='we')
-        frame_setup_col2.grid(row=0, column=2, sticky='we')
+        # frame_setup_col2.grid(row=0, column=2, sticky='we')
 
         frame_monitor = tk.Frame(parent)
         frame_monitor.grid(row=1, column=0)
@@ -137,22 +139,22 @@ class Main(tk.Frame):
         frame_misc.grid(row=2, column=0, sticky='e', padx=px, pady=py)
  
         # Arduino frame
-        frame_arduino = ttk.LabelFrame(frame_setup_col1, text='Arduino')
-        frame_arduino.grid(row=0, column=0, padx=px, pady=py, sticky='we')
+        frame_arduino = ttk.LabelFrame(frame_setup_col0, text='Arduino')
+        frame_arduino.grid(row=1, column=0, padx=px, pady=py, sticky='we')
 
         # Notes frame
-        frame_notes = tk.Frame(frame_setup_col2)
+        frame_notes = tk.Frame(frame_setup_col1)
         frame_notes.grid(row=0, sticky='wens', padx=px, pady=py)
         frame_notes.grid_columnconfigure(0, weight=1)
 
         # Saved file frame
-        frame_file = tk.Frame(frame_setup_col2)
+        frame_file = tk.Frame(frame_setup_col1)
         frame_file.grid(row=1, column=0, padx=px, pady=py, sticky='we')
         frame_file.columnconfigure(0, weight=3)
         frame_file.columnconfigure(1, weight=1)
 
         # Start-stop frame
-        frame_start = tk.Frame(frame_setup_col2)
+        frame_start = tk.Frame(frame_setup_col1)
         frame_start.grid(row=3, column=0, sticky='we', padx=px, pady=py)
         frame_start.grid_columnconfigure(0, weight=1)
         frame_start.grid_columnconfigure(1, weight=1)
@@ -185,7 +187,6 @@ class Main(tk.Frame):
         ### frame_arduino
         ### UI for Arduino
         self.arduino = arduino.Arduino(frame_arduino, main_window=self.parent, verbose=self.verbose, params=self.parameters)
-        print(type(self.arduino))
         self.arduino.grid(row=0, column=0, sticky='we')
         self.arduino.var_uploaded.trace_add('write', self.gui_util)
 
@@ -271,8 +272,8 @@ class Main(tk.Frame):
             initialdir=self.entry_save_file.get(),
             defaultextension='.h5',
             filetypes=[
+                ('CSV file', '*.csv'),
                 ('HDF5 file', '*.h5 *.hdf5'),
-                ('CSV file', '*.csv')
             ]
         )
         self.entry_save_file.delete(0, 'end')
@@ -430,7 +431,7 @@ class Main(tk.Frame):
         # Empty queue before leaving. Otherwise, a backlog will grow.
         while not self.q_serial.empty():
             code, ts, data = self.q_serial.get()
-            print(code, ts, data)
+            # print(code, ts, data)
 
             # End session
             if code == code_end:
@@ -524,6 +525,12 @@ class Main(tk.Frame):
         # Clear self.parameters
         self.parameters = {}
 
+        # Clear GUI
+        self.entry_subject.delete(0, 'end')
+        self.entry_weight.delete(0, 'end')
+        self.entry_save_file.delete(0, 'end')
+        self.scrolled_notes.delete('1.0', 'end')
+
         print('All done!')
 
 
@@ -558,12 +565,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose', action='store_true')
     parser.add_argument('--emulate-wheel', action='store_true')
+    parser.add_argument('--print-arduino', action='store_true')
     args = parser.parse_args()
 
     # GUI
     root = tk.Tk()
     root.wm_title('Wheel')
-    Main(root, verbose=args.verbose, emulate_wheel=args.emulate_wheel)
+    Main(
+        root,
+        verbose=args.verbose,
+        emulate_wheel=args.emulate_wheel, print_arduino=args.print_arduino
+    )
     root.grid()
     root.mainloop()
 
