@@ -226,7 +226,7 @@ class Main(tk.Frame):
             arduino_events[code_wheel]: 'line'
         }
         # tk.Label(frame_live, text='Also under construction').grid()
-        self.live_view = live_data_view.LiveDataView(frame_live, x_history=30000, data_types=data_types, ylim=(-25, 50), xlabel='Time (ms)')
+        self.live_view = live_data_view.LiveDataView(frame_live, x_history=30000, scale_x=0.001, data_types=data_types, ylim=(-25, 50), xlabel='Time (m)')
         
         ###### GUI OBJECTS ORGANIZED BY TIME ACTIVE ######
         # List of components to disable at open
