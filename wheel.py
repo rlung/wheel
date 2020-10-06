@@ -31,7 +31,7 @@ import serial.tools.list_ports
 import threading
 from queue import Queue
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import h5py
 import numpy as np
@@ -111,6 +111,9 @@ class Main(tk.Frame):
         self.var_counter_wheel = tk.IntVar()
         counter_vars = [self.var_counter_wheel]
         self.counter = {ev: var_count for ev, var_count in zip(arduino_events.values(), counter_vars)}
+
+        self.var_start_time = tk.StringVar()
+        self.var_stop_time = tk.StringVar()
 
         # Lay out GUI
 
@@ -219,7 +222,12 @@ class Main(tk.Frame):
         self.button_stop.grid(row=2, column=1, sticky='we')
 
         ## Counter frame
-        tk.Label(frame_counter, text='Under construction').grid()
+        tk.Label(frame_counter, text='Start time: ').grid(row=0, column=0, sticky='e')
+        tk.Label(frame_counter, text='End time: ').grid(row=1, column=0, sticky='e')
+        self.entry_start_time = ttk.Entry(frame_counter, textvariable=self.var_start_time, state='readonly', width=entry_width)
+        self.entry_stop_time = ttk.Entry(frame_counter, textvariable=self.var_stop_time, state='readonly', width=entry_width)
+        self.entry_start_time.grid(row=0, column=1, sticky='wens')
+        self.entry_stop_time.grid(row=1, column=1, sticky='wens')
 
         ## Live frame
         data_types = {
@@ -306,12 +314,13 @@ class Main(tk.Frame):
     def start(self, code_start='E'):
         self.gui_util('start')
 
+        now = datetime.now()
+
         # Create default filename if not defined
         if not self.entry_save_file.get():
             # Default file name
             if not os.path.exists('data'):
                 os.makedirs('data')
-            now = datetime.now()
 
             if self.var_save_txt.get():
                 ext = '.csv'
@@ -347,7 +356,7 @@ class Main(tk.Frame):
         with h5py.File(self.hdf5_filename, 'a') as hdf5_file:
             # Create group for experiment
             # Append to existing file (if applicable). If group already exists, append number to name.
-            date = str(datetime.now().date())
+            date = str(now.date())
             subj = self.entry_subject.get() or '?'
             index = 0
             file_index = ''
@@ -405,7 +414,11 @@ class Main(tk.Frame):
         self.arduino.ser.flushInput()                                   # Remove data from serial input
         self.arduino.ser.write(code_start.encode())
         thread_scan.start()
+
         self.start_time = datetime.now()
+        end_time = self.start_time + timedelta(minutes=self.var_sess_dur.get())
+        self.var_start_time.set(self.start_time.strftime('%H:%M:%S'))
+        self.var_stop_time.set(end_time.strftime('%H:%M:%S'))
         print('Session start {}'.format(self.start_time))
 
         # Update GUI
@@ -532,6 +545,7 @@ class Main(tk.Frame):
         self.scrolled_notes.delete('1.0', 'end')
 
         print('All done!')
+        pdb.set_trace()
 
 
 def scan_serial(q_serial, ser, print_arduino=False, suppress=[], code_end=0):
