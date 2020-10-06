@@ -31,7 +31,7 @@ import serial.tools.list_ports
 import threading
 from queue import Queue
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import h5py
 import numpy as np
@@ -72,7 +72,7 @@ source_path = os.path.dirname(sys.argv[0])
 
 class Main(tk.Frame):
 
-    def __init__(self, parent, verbose=False, emulate_wheel=False):
+    def __init__(self, parent, verbose=False, emulate_wheel=False, print_arduino=False):
         self.parent = parent
         parent.columnconfigure(0, weight=1)
         # parent.rowconfigure(1, weight=1)
@@ -100,9 +100,11 @@ class Main(tk.Frame):
             'track_period': self.var_track_per,
         }
 
-        self.var_port = tk.StringVar()
         self.var_print_arduino = tk.BooleanVar()
         self.var_stop = tk.BooleanVar()
+
+        self.var_print_arduino.set(print_arduino)
+        self.var_stop.set(False)
 
         # Counters
         # IMPORTANT: need to keep `counter_vars` in same order as `arduino_events`
@@ -110,16 +112,19 @@ class Main(tk.Frame):
         counter_vars = [self.var_counter_wheel]
         self.counter = {ev: var_count for ev, var_count in zip(arduino_events.values(), counter_vars)}
 
+        self.var_start_time = tk.StringVar()
+        self.var_stop_time = tk.StringVar()
+
         # Lay out GUI
 
         frame_setup = tk.Frame(parent)
         frame_setup.grid(row=0, column=0)
         frame_setup_col0 = tk.Frame(frame_setup)
         frame_setup_col1 = tk.Frame(frame_setup)
-        frame_setup_col2 = tk.Frame(frame_setup)
+        # frame_setup_col2 = tk.Frame(frame_setup)
         frame_setup_col0.grid(row=0, column=0, sticky='we')
         frame_setup_col1.grid(row=0, column=1, sticky='we')
-        frame_setup_col2.grid(row=0, column=2, sticky='we')
+        # frame_setup_col2.grid(row=0, column=2, sticky='we')
 
         frame_monitor = tk.Frame(parent)
         frame_monitor.grid(row=1, column=0)
@@ -137,22 +142,22 @@ class Main(tk.Frame):
         frame_misc.grid(row=2, column=0, sticky='e', padx=px, pady=py)
  
         # Arduino frame
-        frame_arduino = ttk.LabelFrame(frame_setup_col1, text='Arduino')
-        frame_arduino.grid(row=0, column=0, padx=px, pady=py, sticky='we')
+        frame_arduino = ttk.LabelFrame(frame_setup_col0, text='Arduino')
+        frame_arduino.grid(row=1, column=0, padx=px, pady=py, sticky='we')
 
         # Notes frame
-        frame_notes = tk.Frame(frame_setup_col2)
+        frame_notes = tk.Frame(frame_setup_col1)
         frame_notes.grid(row=0, sticky='wens', padx=px, pady=py)
         frame_notes.grid_columnconfigure(0, weight=1)
 
         # Saved file frame
-        frame_file = tk.Frame(frame_setup_col2)
+        frame_file = tk.Frame(frame_setup_col1)
         frame_file.grid(row=1, column=0, padx=px, pady=py, sticky='we')
         frame_file.columnconfigure(0, weight=3)
         frame_file.columnconfigure(1, weight=1)
 
         # Start-stop frame
-        frame_start = tk.Frame(frame_setup_col2)
+        frame_start = tk.Frame(frame_setup_col1)
         frame_start.grid(row=3, column=0, sticky='we', padx=px, pady=py)
         frame_start.grid_columnconfigure(0, weight=1)
         frame_start.grid_columnconfigure(1, weight=1)
@@ -185,7 +190,6 @@ class Main(tk.Frame):
         ### frame_arduino
         ### UI for Arduino
         self.arduino = arduino.Arduino(frame_arduino, main_window=self.parent, verbose=self.verbose, params=self.parameters)
-        print(type(self.arduino))
         self.arduino.grid(row=0, column=0, sticky='we')
         self.arduino.var_uploaded.trace_add('write', self.gui_util)
 
@@ -218,14 +222,19 @@ class Main(tk.Frame):
         self.button_stop.grid(row=2, column=1, sticky='we')
 
         ## Counter frame
-        tk.Label(frame_counter, text='Under construction').grid()
+        tk.Label(frame_counter, text='Start time: ').grid(row=0, column=0, sticky='e')
+        tk.Label(frame_counter, text='End time: ').grid(row=1, column=0, sticky='e')
+        self.entry_start_time = ttk.Entry(frame_counter, textvariable=self.var_start_time, state='readonly', width=entry_width)
+        self.entry_stop_time = ttk.Entry(frame_counter, textvariable=self.var_stop_time, state='readonly', width=entry_width)
+        self.entry_start_time.grid(row=0, column=1, sticky='wens')
+        self.entry_stop_time.grid(row=1, column=1, sticky='wens')
 
         ## Live frame
         data_types = {
             arduino_events[code_wheel]: 'line'
         }
         # tk.Label(frame_live, text='Also under construction').grid()
-        self.live_view = live_data_view.LiveDataView(frame_live, x_history=30000, data_types=data_types, ylim=(-25, 50), xlabel='Time (ms)')
+        self.live_view = live_data_view.LiveDataView(frame_live, x_history=30000, scale_x=0.001, data_types=data_types, ylim=(-25, 50), xlabel='Time (m)')
         
         ###### GUI OBJECTS ORGANIZED BY TIME ACTIVE ######
         # List of components to disable at open
@@ -271,8 +280,8 @@ class Main(tk.Frame):
             initialdir=self.entry_save_file.get(),
             defaultextension='.h5',
             filetypes=[
+                ('CSV file', '*.csv'),
                 ('HDF5 file', '*.h5 *.hdf5'),
-                ('CSV file', '*.csv')
             ]
         )
         self.entry_save_file.delete(0, 'end')
@@ -305,12 +314,13 @@ class Main(tk.Frame):
     def start(self, code_start='E'):
         self.gui_util('start')
 
+        now = datetime.now()
+
         # Create default filename if not defined
         if not self.entry_save_file.get():
             # Default file name
             if not os.path.exists('data'):
                 os.makedirs('data')
-            now = datetime.now()
 
             if self.var_save_txt.get():
                 ext = '.csv'
@@ -346,7 +356,7 @@ class Main(tk.Frame):
         with h5py.File(self.hdf5_filename, 'a') as hdf5_file:
             # Create group for experiment
             # Append to existing file (if applicable). If group already exists, append number to name.
-            date = str(datetime.now().date())
+            date = str(now.date())
             subj = self.entry_subject.get() or '?'
             index = 0
             file_index = ''
@@ -404,7 +414,11 @@ class Main(tk.Frame):
         self.arduino.ser.flushInput()                                   # Remove data from serial input
         self.arduino.ser.write(code_start.encode())
         thread_scan.start()
+
         self.start_time = datetime.now()
+        end_time = self.start_time + timedelta(minutes=self.var_sess_dur.get())
+        self.var_start_time.set(self.start_time.strftime('%H:%M:%S'))
+        self.var_stop_time.set(end_time.strftime('%H:%M:%S'))
         print('Session start {}'.format(self.start_time))
 
         # Update GUI
@@ -430,7 +444,7 @@ class Main(tk.Frame):
         # Empty queue before leaving. Otherwise, a backlog will grow.
         while not self.q_serial.empty():
             code, ts, data = self.q_serial.get()
-            print(code, ts, data)
+            # print(code, ts, data)
 
             # End session
             if code == code_end:
@@ -524,7 +538,14 @@ class Main(tk.Frame):
         # Clear self.parameters
         self.parameters = {}
 
+        # Clear GUI
+        self.entry_subject.delete(0, 'end')
+        self.entry_weight.delete(0, 'end')
+        self.entry_save_file.delete(0, 'end')
+        self.scrolled_notes.delete('1.0', 'end')
+
         print('All done!')
+        pdb.set_trace()
 
 
 def scan_serial(q_serial, ser, print_arduino=False, suppress=[], code_end=0):
@@ -558,12 +579,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose', action='store_true')
     parser.add_argument('--emulate-wheel', action='store_true')
+    parser.add_argument('--print-arduino', action='store_true')
     args = parser.parse_args()
 
     # GUI
     root = tk.Tk()
     root.wm_title('Wheel')
-    Main(root, verbose=args.verbose, emulate_wheel=args.emulate_wheel)
+    Main(
+        root,
+        verbose=args.verbose,
+        emulate_wheel=args.emulate_wheel, print_arduino=args.print_arduino
+    )
     root.grid()
     root.mainloop()
 
