@@ -15,9 +15,6 @@ Arduino when this happens.
 
 '''
 
-import sys
-sys.path.insert(0, './behavior')
-
 import argparse
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -33,6 +30,7 @@ from queue import Queue
 import time
 from datetime import datetime, timedelta
 import os
+import sys
 import h5py
 import numpy as np
 import matplotlib
@@ -211,7 +209,8 @@ class Main(tk.Frame):
         self.entry_save_file.grid(row=1, column=0, sticky='wens')
         self.button_set_file.grid(row=1, column=1, sticky='e')
 
-        icon_folder = ImageTk.PhotoImage(file=os.path.join(source_path, 'behavior/graphics/folder.png'))
+        folder_icon_file = os.path.join(source_path, 'graphics/folder.png')
+        icon_folder = ImageTk.PhotoImage(file=folder_icon_file)
         self.button_set_file.config(image=icon_folder)
         self.button_set_file.image = icon_folder
         
