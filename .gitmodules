@@ -1,0 +1,3 @@
+[submodule "pupilize"]
+	path = pupilize
+	url = https://github.com/rlung/pupilize.git
