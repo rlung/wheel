@@ -33,13 +33,13 @@ import os
 import sys
 import h5py
 import numpy as np
-import matplotlib
-from matplotlib.figure import Figure
+# import matplotlib
+# from matplotlib.figure import Figure
 import arduino
 import live_data_view
 import pdb
 
-matplotlib.use('TKAgg')
+# matplotlib.use('TKAgg')
 
 
 # Header to print with Arduino outputs
